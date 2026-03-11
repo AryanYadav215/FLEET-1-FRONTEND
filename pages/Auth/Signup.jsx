@@ -10,6 +10,8 @@ export default function Signup() {
     company: '',
     role: 'manufacturer',
   });
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
   const { signup } = useAuth();
   const navigate = useNavigate();
 
@@ -17,11 +19,19 @@ export default function Signup() {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    signup(form);
-    alert('Account created! Please login.');
-    navigate('/login');
+    setError('');
+    setLoading(true);
+    try {
+      await signup(form);
+      alert('Account created! Please login.');
+      navigate('/login');
+    } catch (err) {
+      setError(err.message || 'Signup failed');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -29,6 +39,7 @@ export default function Signup() {
       <div className="auth-card">
         <h1>Create Account</h1>
         <p>Register for Logistics Aggregator ERP</p>
+        {error && <p style={{ color: 'var(--color-error, #c00)', fontSize: '14px', marginBottom: '8px' }}>{error}</p>}
         <form onSubmit={handleSubmit}>
           <div className="form-group">
             <label>Full Name</label>
@@ -53,8 +64,8 @@ export default function Signup() {
               <option value="transporter">Transporter</option>
             </select>
           </div>
-          <button type="submit" className="btn btn-primary btn-block" style={{ marginTop: '8px' }}>
-            Create Account
+          <button type="submit" className="btn btn-primary btn-block" style={{ marginTop: '8px' }} disabled={loading}>
+            {loading ? 'Creating...' : 'Create Account'}
           </button>
         </form>
         <p style={{ textAlign: 'center', marginTop: '16px', marginBottom: 0 }}>

@@ -13,13 +13,23 @@ export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [role, setRole] = useState('manufacturer');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    login(email, password, role);
-    navigate(roleRedirects[role]);
+    setError('');
+    setLoading(true);
+    try {
+      await login(email, password, role);
+      navigate(roleRedirects[role]);
+    } catch (err) {
+      setError(err.message || 'Login failed');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -48,6 +58,7 @@ export default function Login() {
               required
             />
           </div>
+          {error && <p style={{ color: 'var(--color-error, #c00)', fontSize: '14px', marginBottom: '8px' }}>{error}</p>}
           <div className="form-group">
             <label>Login As</label>
             <select value={role} onChange={e => setRole(e.target.value)}>
@@ -57,8 +68,8 @@ export default function Login() {
               <option value="admin">Admin</option>
             </select>
           </div>
-          <button type="submit" className="btn btn-primary btn-block" style={{ marginTop: '8px' }}>
-            Sign In
+          <button type="submit" className="btn btn-primary btn-block" style={{ marginTop: '8px' }} disabled={loading}>
+            {loading ? 'Signing In...' : 'Sign In'}
           </button>
         </form>
         <p style={{ textAlign: 'center', marginTop: '16px', marginBottom: 0 }}>

@@ -1,5 +1,7 @@
-import { useState } from 'react';
-import { shipments, transporters, assignTransporter, handoverShipment, getStats } from '../../data/mockData';
+import { useState, useEffect } from 'react';
+import { useAuth } from '../../context/AuthContext';
+import { API_BASE } from '../../src/config';
+import { mapShipment, mapTransporter, statusToBackend } from '../../src/api';
 
 const statusLabels = {
   pending: 'Pending',
@@ -12,37 +14,108 @@ const statusLabels = {
 };
 
 export default function OperationsDashboard() {
+  const { getAuthHeaders } = useAuth();
   const [activeTab, setActiveTab] = useState('new');
   const [refresh, setRefresh] = useState(0);
   const [showAssign, setShowAssign] = useState(null);
   const [showHandover, setShowHandover] = useState(null);
   const [selectedTransporter, setSelectedTransporter] = useState('');
   const [handoverCity, setHandoverCity] = useState('');
+  const [shipments, setShipments] = useState([]);
+  const [transporters, setTransporters] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
-  const stats = getStats();
+  useEffect(() => {
+    let cancelled = false;
+    async function load() {
+      try {
+        const headers = getAuthHeaders();
+        const [shipRes, transRes] = await Promise.all([
+          fetch(`${API_BASE}/shipments`, { headers }),
+          fetch(`${API_BASE}/transporters`, { headers }),
+        ]);
+        const shipData = await shipRes.json();
+        const transData = transRes.ok ? await transRes.json() : [];
+        if (!shipRes.ok) throw new Error(shipData.message || 'Failed to load');
+        const trans = Array.isArray(transData) ? transData : transData.transporters || [];
+        const mappedShip = (Array.isArray(shipData) ? shipData : shipData.shipments || []).map(mapShipment);
+        const mappedTrans = trans.map(mapTransporter);
+        if (!cancelled) {
+          setShipments(mappedShip);
+          setTransporters(mappedTrans);
+        }
+      } catch (err) {
+        if (!cancelled) setError(err.message || 'Failed to load');
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+    load();
+    return () => { cancelled = true; };
+  }, [refresh, getAuthHeaders]);
+
+  const stats = {
+    total: shipments.length,
+    pending: shipments.filter(s => s.status === 'pending').length,
+    assigned: shipments.filter(s => s.status === 'assigned').length,
+    inTransit: shipments.filter(s => ['picked_up', 'in_transit', 'at_hub'].includes(s.status)).length,
+    delivered: shipments.filter(s => s.status === 'delivered').length,
+  };
   const pendingShipments = shipments.filter(s => s.status === 'pending');
   const activeShipments = shipments.filter(s => !['pending', 'delivered'].includes(s.status));
   const allShipments = shipments;
 
-  const handleAssign = (shipmentId) => {
+  const handleAssign = async (shipmentId) => {
     if (!selectedTransporter) return;
-    assignTransporter(shipmentId, parseInt(selectedTransporter));
-    setShowAssign(null);
-    setSelectedTransporter('');
-    setRefresh(r => r + 1);
+    try {
+      const res = await fetch(`${API_BASE}/assign-transporter`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({
+          shipment_id: shipmentId,
+          transporter_id: parseInt(selectedTransporter, 10),
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Failed to assign');
+      setShowAssign(null);
+      setSelectedTransporter('');
+      setRefresh(r => r + 1);
+    } catch (err) {
+      alert(err.message || 'Failed to assign');
+    }
   };
 
-  const handleHandover = (shipmentId) => {
+  const handleHandover = async (shipmentId) => {
     if (!selectedTransporter || !handoverCity) return;
-    handoverShipment(shipmentId, parseInt(selectedTransporter), handoverCity);
-    setShowHandover(null);
-    setSelectedTransporter('');
-    setHandoverCity('');
-    setRefresh(r => r + 1);
+    try {
+      const res = await fetch(`${API_BASE}/update-status`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({
+          shipment_id: shipmentId,
+          status: statusToBackend.handed_over || 'Handed Over',
+          transporter_id: parseInt(selectedTransporter, 10),
+          location: handoverCity,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Failed to handover');
+      setShowHandover(null);
+      setSelectedTransporter('');
+      setHandoverCity('');
+      setRefresh(r => r + 1);
+    } catch (err) {
+      alert(err.message || 'Failed to handover');
+    }
   };
+
+  if (loading) return <div className="empty-state"><p>Loading...</p></div>;
 
   return (
     <div>
+      {error && <p style={{ color: 'var(--color-error, #c00)' }}>{error}</p>}
       <div className="page-header">
         <h2>Operations Dashboard</h2>
       </div>
@@ -121,7 +194,7 @@ export default function OperationsDashboard() {
                               <option key={t.id} value={t.id}>{t.name} ({t.city})</option>
                             ))}
                           </select>
-                          <button className="btn btn-success btn-sm" onClick={() => handleAssign(s.id)}>Assign</button>
+                          <button className="btn btn-success btn-sm" onClick={() => handleAssign(s.numericId ?? s.id)}>Assign</button>
                           <button className="btn btn-secondary btn-sm" onClick={() => setShowAssign(null)}>Cancel</button>
                         </div>
                       ) : (
@@ -193,7 +266,7 @@ export default function OperationsDashboard() {
                               placeholder="City"
                               style={{ padding: '6px 8px', borderRadius: 'var(--radius)', border: '1px solid var(--color-border)', fontSize: '13px', width: '100px' }}
                             />
-                            <button className="btn btn-success btn-sm" onClick={() => handleHandover(s.id)}>Confirm</button>
+                            <button className="btn btn-success btn-sm" onClick={() => handleHandover(s.numericId ?? s.id)}>Confirm</button>
                             <button className="btn btn-secondary btn-sm" onClick={() => setShowHandover(null)}>Cancel</button>
                           </div>
                         )}

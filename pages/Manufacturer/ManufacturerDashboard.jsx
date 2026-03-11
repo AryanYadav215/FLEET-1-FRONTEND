@@ -1,6 +1,8 @@
-import { Link } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { getShipmentsByManufacturer, getStats } from '../../data/mockData';
+import { API_BASE } from '../../src/config';
+import { mapShipment } from '../../src/api';
 
 const statusLabels = {
   pending: 'Pending',
@@ -13,10 +15,38 @@ const statusLabels = {
 };
 
 export default function ManufacturerDashboard() {
-  const { user } = useAuth();
-  const stats = getStats(user.id);
-  const shipments = getShipmentsByManufacturer(user.id);
+  const { user, getAuthHeaders } = useAuth();
+  const navigate = useNavigate();
+  const [shipments, setShipments] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function load() {
+      try {
+        const res = await fetch(`${API_BASE}/shipments`, { headers: getAuthHeaders() });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.message || 'Failed to load');
+        if (!cancelled) setShipments((Array.isArray(data) ? data : data.shipments || []).map(mapShipment));
+      } catch {
+        if (!cancelled) setShipments([]);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+    if (user) load();
+    return () => { cancelled = true; };
+  }, [user, getAuthHeaders]);
+
+  const stats = {
+    total: shipments.length,
+    pending: shipments.filter(s => s.status === 'pending').length,
+    inTransit: shipments.filter(s => ['picked_up', 'in_transit', 'at_hub'].includes(s.status)).length,
+    delivered: shipments.filter(s => s.status === 'delivered').length,
+  };
   const recentShipments = shipments.slice(0, 5);
+
+  if (loading) return <div className="empty-state"><p>Loading...</p></div>;
 
   return (
     <div>
@@ -68,7 +98,7 @@ export default function ManufacturerDashboard() {
             </thead>
             <tbody>
               {recentShipments.map(s => (
-                <tr key={s.id} className="clickable" onClick={() => window.location.href = `/manufacturer/shipments/${s.id}`}>
+                <tr key={s.id} className="clickable" onClick={() => navigate(`/manufacturer/shipments/${s.numericId ?? s.id}`)}>
                   <td><strong>{s.id}</strong></td>
                   <td>{s.delivery.city}</td>
                   <td>{s.goods.description}</td>

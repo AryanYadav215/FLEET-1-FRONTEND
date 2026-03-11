@@ -1,5 +1,8 @@
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getShipmentById, transporters } from '../../data/mockData';
+import { useAuth } from '../../context/AuthContext';
+import { API_BASE } from '../../src/config';
+import { mapShipment, mapTransporter } from '../../src/api';
 
 const statusLabels = {
   pending: 'Pending',
@@ -14,18 +17,60 @@ const statusLabels = {
 export default function ShipmentDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const shipment = getShipmentById(id);
+  const { getAuthHeaders } = useAuth();
+  const [shipment, setShipment] = useState(null);
+  const [transporters, setTransporters] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
-  if (!shipment) {
+  useEffect(() => {
+    let cancelled = false;
+    async function load() {
+      try {
+        const headers = getAuthHeaders();
+        const [shipRes, timelineRes, transRes] = await Promise.all([
+          fetch(`${API_BASE}/shipments/${id}`, { headers }),
+          fetch(`${API_BASE}/shipments/${id}/timeline`, { headers }).catch(() => null),
+          fetch(`${API_BASE}/transporters`, { headers }).catch(() => null),
+        ]);
+        const shipData = await shipRes.json();
+        if (!shipRes.ok) throw new Error(shipData.message || 'Shipment not found');
+        let timeline = [];
+        if (timelineRes?.ok) {
+          const tlData = await timelineRes.json();
+          timeline = tlData.timeline || [];
+        }
+        let trans = [];
+        if (transRes?.ok) {
+          const tData = await transRes.json();
+          trans = Array.isArray(tData) ? tData : tData.transporters || [];
+        }
+        if (!cancelled) {
+          const mapped = mapShipment({ ...shipData, timeline });
+          setShipment(mapped);
+          setTransporters(trans.map(mapTransporter));
+        }
+      } catch (err) {
+        if (!cancelled) setError(err.message || 'Failed to load shipment');
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+    load();
+    return () => { cancelled = true; };
+  }, [id, getAuthHeaders]);
+
+  const transporter = shipment && transporters.find(t => t.id === (shipment.assignedTransporter ?? shipment.currentTransporter));
+
+  if (loading) return <div className="empty-state"><p>Loading...</p></div>;
+  if (error || !shipment) {
     return (
       <div className="empty-state">
         <div className="emoji">🔍</div>
-        <p>Shipment not found.</p>
+        <p>{error || 'Shipment not found.'}</p>
       </div>
     );
   }
-
-  const transporter = transporters.find(t => t.id === shipment.assignedTransporter);
 
   return (
     <div className="detail-page">
@@ -119,7 +164,7 @@ export default function ShipmentDetail() {
       <div className="detail-section">
         <h3>📜 Shipment Timeline</h3>
         <div className="timeline">
-          {shipment.timeline.map((event, i) => (
+          {(shipment.timeline || []).map((event, i) => (
             <div className="timeline-item" key={i}>
               <div className="timeline-event">{event.event}</div>
               <div className="timeline-meta">

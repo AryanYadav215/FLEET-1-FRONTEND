@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { createShipment } from '../../data/mockData';
+import { API_BASE } from '../../src/config';
 
 export default function CreateShipment() {
-  const { user } = useAuth();
+  const { user, getAuthHeaders } = useAuth();
   const navigate = useNavigate();
+  const [error, setError] = useState('');
   const [form, setForm] = useState({
     pickupAddress: '',
     pickupCity: '',
@@ -23,27 +24,34 @@ export default function CreateShipment() {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    const pickup = {
-      address: form.pickupAddress,
-      city: form.pickupCity,
-      contactPerson: form.pickupContact,
-    };
-    const delivery = {
-      receiverName: form.receiverName,
-      address: form.receiverAddress,
-      city: form.destinationCity,
-      phone: form.receiverPhone,
-    };
-    const goods = {
-      description: form.goodsDescription,
-      quantity: parseInt(form.quantity),
-      weight: form.weight || null,
-    };
-    const newShipment = createShipment(pickup, delivery, goods, user.id);
-    alert(`Shipment ${newShipment.id} created successfully!`);
-    navigate('/manufacturer/shipments');
+    setError('');
+    try {
+      const headers = getAuthHeaders();
+      const body = {
+        pickup_address: form.pickupAddress,
+        pickup_city: form.pickupCity,
+        receiver_name: form.receiverName,
+        delivery_address: form.receiverAddress,
+        destination_city: form.destinationCity,
+        phone: form.receiverPhone,
+        goods_description: form.goodsDescription,
+        quantity: parseInt(form.quantity, 10) || 1,
+        weight: form.weight || undefined,
+      };
+      const res = await fetch(`${API_BASE}/shipments`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(body),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Failed to create shipment');
+      alert(`Shipment created successfully!`);
+      navigate('/manufacturer/shipments');
+    } catch (err) {
+      setError(err.message || 'Failed to create shipment');
+    }
   };
 
   return (
@@ -51,7 +59,7 @@ export default function CreateShipment() {
       <div className="page-header">
         <h2>Create Shipment</h2>
       </div>
-
+      {error && <p style={{ color: 'var(--color-error, #c00)', marginBottom: '12px' }}>{error}</p>}
       <form onSubmit={handleSubmit}>
         <div className="form-section">
           <h3>📍 Pickup Details</h3>
