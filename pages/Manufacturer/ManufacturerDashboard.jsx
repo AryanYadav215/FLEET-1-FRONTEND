@@ -4,7 +4,6 @@ import { useAuth } from '../../context/AuthContext';
 
 // ✅ FIXED (Vite-safe absolute imports)
 import { mapShipment } from '../../api';
-import { mapShipment } from '../../api';
 
 const statusLabels = {
   pending: 'Pending',
