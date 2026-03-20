@@ -1,5 +1,6 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { useEffect } from 'react';
 
 const navConfig = {
   manufacturer: [
@@ -31,10 +32,14 @@ export default function Layout() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
 
-  if (!user) {
-    navigate('/login');
-    return null;
-  }
+  // ✅ Proper redirect handling
+  useEffect(() => {
+    if (!user) {
+      navigate('/login');
+    }
+  }, [user, navigate]);
+
+  if (!user) return null;
 
   const links = navConfig[user.role] || [];
 
@@ -48,37 +53,55 @@ export default function Layout() {
       <aside className="sidebar">
         <div className="sidebar-brand">
           <h2>LogiERP</h2>
-          <span>{roleLabels[user.role]} Panel</span>
+          <span>{roleLabels[user.role]}</span>
         </div>
+
         <nav className="sidebar-nav">
           <div className="sidebar-section">Navigation</div>
-          {links.map(link => (
+
+          {links.map((link) => (
             <NavLink
               key={link.to}
               to={link.to}
-              className={({ isActive }) => isActive ? 'active' : ''}
+              className={({ isActive }) => (isActive ? 'active' : '')}
             >
               <span className="nav-icon">{link.icon}</span>
               <span>{link.label}</span>
             </NavLink>
           ))}
         </nav>
+
         <div style={{ padding: '16px 20px', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
-          <button onClick={handleLogout} className="btn btn-secondary btn-sm btn-block">
+          <button
+            onClick={handleLogout}
+            className="btn btn-secondary btn-sm btn-block"
+          >
             Logout
           </button>
         </div>
       </aside>
+
       <div className="main-wrapper">
         <header className="header">
           <div className="header-title">Logistics Aggregator ERP</div>
+
           <div className="header-user">
             <span>{user.name}</span>
-            <span style={{ fontSize: '12px', background: 'var(--color-primary-light)', color: 'var(--color-primary)', padding: '3px 8px', borderRadius: '12px' }}>
+
+            <span
+              style={{
+                fontSize: '12px',
+                background: 'var(--color-primary-light)',
+                color: 'var(--color-primary)',
+                padding: '3px 8px',
+                borderRadius: '12px',
+              }}
+            >
               {roleLabels[user.role]}
             </span>
           </div>
         </header>
+
         <main className="main-content">
           <Outlet />
         </main>

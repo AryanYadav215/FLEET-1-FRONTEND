@@ -1,5 +1,5 @@
 import { createContext, useContext, useState } from 'react';
-import { API_BASE } from '../src/config';
+import { API_BASE } from '../config';
 
 const TOKEN_KEY = 'fleet1_token';
 const USER_KEY = 'fleet1_user';
@@ -15,13 +15,16 @@ export function AuthProvider({ children }) {
       return null;
     }
   });
+
   const [token, setToken] = useState(() => localStorage.getItem(TOKEN_KEY));
 
   const saveAuth = (userData, authToken) => {
     setUser(userData);
     setToken(authToken);
+
     if (authToken) localStorage.setItem(TOKEN_KEY, authToken);
     else localStorage.removeItem(TOKEN_KEY);
+
     if (userData) localStorage.setItem(USER_KEY, JSON.stringify(userData));
     else localStorage.removeItem(USER_KEY);
   };
@@ -32,11 +35,22 @@ export function AuthProvider({ children }) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password }),
     });
+
     const data = await res.json();
+
     if (!res.ok) throw new Error(data.message || 'Login failed');
-    const userData = { ...data.user, role: data.user.role || role };
-    saveAuth(userData, data.token);
-    return userData;
+
+    const token = data.token || data.access_token;
+    const userData = data.user || data;
+
+    const finalUser = {
+      ...userData,
+      role: userData.role || role,
+    };
+
+    saveAuth(finalUser, token);
+
+    return finalUser;
   };
 
   const signup = async (data) => {
@@ -52,9 +66,12 @@ export function AuthProvider({ children }) {
         company_name: data.company,
       }),
     });
+
     const json = await res.json();
+
     if (!res.ok) throw new Error(json.message || 'Signup failed');
-    return json.user;
+
+    return await login(data.email, data.password, data.role);
   };
 
   const logout = () => {
@@ -63,6 +80,7 @@ export function AuthProvider({ children }) {
 
   const getAuthHeaders = () => {
     const t = localStorage.getItem(TOKEN_KEY);
+
     return {
       'Content-Type': 'application/json',
       ...(t ? { Authorization: `Bearer ${t}` } : {}),
@@ -75,13 +93,3 @@ export function AuthProvider({ children }) {
     </AuthContext.Provider>
   );
 }
-
-export function useAuth() {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within AuthProvider');
-  }
-  return context;
-}
-
-export default AuthContext;

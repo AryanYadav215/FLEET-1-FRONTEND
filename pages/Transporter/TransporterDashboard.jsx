@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import { API_BASE } from '../../src/config';
-import { mapShipment, mapTransporter, statusToBackend } from '../../src/api';
+import { API_BASE } from '../../config';
+import { mapShipment, mapTransporter, statusToBackend } from '../../api';
 
 const statusLabels = {
   pending: 'Pending',
@@ -13,7 +13,14 @@ const statusLabels = {
   delivered: 'Delivered',
 };
 
-const statusFlow = ['assigned', 'picked_up', 'in_transit', 'at_hub', 'handed_over', 'delivered'];
+const statusFlow = [
+  'assigned',
+  'picked_up',
+  'in_transit',
+  'at_hub',
+  'handed_over',
+  'delivered',
+];
 
 function getNextStatus(current) {
   const idx = statusFlow.indexOf(current);
@@ -25,6 +32,7 @@ function getNextStatus(current) {
 
 export default function TransporterDashboard() {
   const { user, getAuthHeaders } = useAuth();
+
   const [refresh, setRefresh] = useState(0);
   const [shipments, setShipments] = useState([]);
   const [transporters, setTransporters] = useState([]);
@@ -33,63 +41,138 @@ export default function TransporterDashboard() {
 
   useEffect(() => {
     let cancelled = false;
+
     async function load() {
       try {
         const headers = getAuthHeaders();
+
         const [shipRes, transRes] = await Promise.all([
           fetch(`${API_BASE}/shipments`, { headers }),
           fetch(`${API_BASE}/transporters`, { headers }),
         ]);
+
         const shipData = await shipRes.json();
         const transData = transRes.ok ? await transRes.json() : [];
-        if (!shipRes.ok) throw new Error(shipData.message || 'Failed to load');
-        const trans = Array.isArray(transData) ? transData : transData.transporters || [];
+
+        if (!shipRes.ok) {
+          throw new Error(shipData.message || 'Failed to load');
+        }
+
+        const trans = Array.isArray(transData)
+          ? transData
+          : transData.transporters || [];
+
         const mappedTrans = trans.map(mapTransporter);
-        const mappedShip = (Array.isArray(shipData) ? shipData : shipData.shipments || []).map(mapShipment);
-        const transporter = mappedTrans.find(t => t.name === user?.company_name || t.name === user?.name) || mappedTrans[0];
+        const mappedShip = (Array.isArray(shipData)
+          ? shipData
+          : shipData.shipments || []
+        ).map(mapShipment);
+
+        const transporter =
+          mappedTrans.find(
+            (t) =>
+              t.name === user?.company_name || t.name === user?.name
+          ) || mappedTrans[0];
+
         const transporterShipments = transporter
-          ? mappedShip.filter(s => (s.assignedTransporter ?? s.currentTransporter) == transporter.id)
+          ? mappedShip.filter(
+              (s) =>
+                (s.assignedTransporter ?? s.currentTransporter) ==
+                transporter.id
+            )
           : [];
-        const toShow = transporterShipments.length > 0 ? transporterShipments : mappedShip;
+
+        const toShow =
+          transporterShipments.length > 0
+            ? transporterShipments
+            : mappedShip;
+
         if (!cancelled) {
           setShipments(toShow);
           setTransporters(mappedTrans);
         }
+
       } catch (err) {
-        if (!cancelled) setError(err.message || 'Failed to load');
+        if (!cancelled) {
+          setError(err.message || 'Failed to load');
+        }
       } finally {
-        if (!cancelled) setLoading(false);
+        if (!cancelled) {
+          setLoading(false);
+        }
       }
     }
-    if (user) load();
-    return () => { cancelled = true; };
-  }, [user, refresh, getAuthHeaders]);
 
-  const transporter = transporters.find(t => t.name === user?.company_name || t.name === user?.name) || transporters[0];
+    if (user) {
+      load();
+    }
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user, refresh]); // ✅ removed getAuthHeaders
+
+  const transporter =
+    transporters.find(
+      (t) =>
+        t.name === user?.company_name || t.name === user?.name
+    ) || transporters[0];
 
   const handleStatusUpdate = async (shipmentId, newStatus) => {
     try {
       const backendStatus = statusToBackend[newStatus] || newStatus;
+
       const res = await fetch(`${API_BASE}/update-status`, {
         method: 'POST',
         headers: getAuthHeaders(),
-        body: JSON.stringify({ shipment_id: shipmentId, status: backendStatus }),
+        body: JSON.stringify({
+          shipment_id: shipmentId,
+          status: backendStatus,
+        }),
       });
+
       const data = await res.json();
-      if (!res.ok) throw new Error(data.message || 'Failed to update status');
-      setRefresh(r => r + 1);
+
+      if (!res.ok) {
+        throw new Error(data.message || 'Failed to update status');
+      }
+
+      // 🔥 refresh UI
+      setRefresh((r) => r + 1);
+
     } catch (err) {
       alert(err.message || 'Failed to update status');
     }
   };
 
+  if (loading) {
+    return (
+      <div className="empty-state">
+        <p>Loading...</p>
+      </div>
+    );
+  }
+
   return (
     <div>
-      {error && <p style={{ color: 'var(--color-error, #c00)' }}>{error}</p>}
+      {error && (
+        <p style={{ color: 'var(--color-error, #c00)' }}>
+          {error}
+        </p>
+      )}
+
       <div className="page-header">
         <h2>Transporter Dashboard</h2>
-        <span style={{ fontSize: '14px', color: 'var(--color-text-secondary)' }}>
-          {transporter ? `${transporter.name} — ${transporter.city}` : 'Loading...'}
+
+        <span
+          style={{
+            fontSize: '14px',
+            color: 'var(--color-text-secondary)',
+          }}
+        >
+          {transporter
+            ? `${transporter.name} — ${transporter.city}`
+            : 'Loading...'}
         </span>
       </div>
 
@@ -99,15 +182,28 @@ export default function TransporterDashboard() {
           <div className="stat-label">Assigned Shipments</div>
           <div className="stat-value">{shipments.length}</div>
         </div>
+
         <div className="stat-card">
           <div className="stat-icon">🚚</div>
           <div className="stat-label">In Transit</div>
-          <div className="stat-value">{shipments.filter(s => ['picked_up', 'in_transit'].includes(s.status)).length}</div>
+          <div className="stat-value">
+            {
+              shipments.filter((s) =>
+                ['picked_up', 'in_transit'].includes(s.status)
+              ).length
+            }
+          </div>
         </div>
+
         <div className="stat-card">
           <div className="stat-icon">✅</div>
           <div className="stat-label">Delivered</div>
-          <div className="stat-value">{shipments.filter(s => s.status === 'delivered').length}</div>
+          <div className="stat-value">
+            {
+              shipments.filter((s) => s.status === 'delivered')
+                .length
+            }
+          </div>
         </div>
       </div>
 
@@ -115,6 +211,7 @@ export default function TransporterDashboard() {
         <div className="table-header">
           <h3>Assigned Shipments</h3>
         </div>
+
         {shipments.length > 0 ? (
           <table>
             <thead>
@@ -127,26 +224,57 @@ export default function TransporterDashboard() {
                 <th>Action</th>
               </tr>
             </thead>
+
             <tbody>
-              {shipments.map(s => {
+              {shipments.map((s) => {
                 const nextStatus = getNextStatus(s.status);
+
                 return (
                   <tr key={s.id}>
                     <td><strong>{s.id}</strong></td>
-                    <td>{s.pickup.address}, {s.pickup.city}</td>
-                    <td>{s.delivery.address}, {s.delivery.city}</td>
-                    <td>{s.goods.description} (Qty: {s.goods.quantity})</td>
-                    <td><span className={`badge badge-${s.status}`}>{statusLabels[s.status]}</span></td>
+
+                    <td>
+                      {s.pickup?.address || '-'}, {s.pickup?.city || '-'}
+                    </td>
+
+                    <td>
+                      {s.delivery?.address || '-'}, {s.delivery?.city || '-'}
+                    </td>
+
+                    <td>
+                      {s.goods?.description || '-'} (Qty:{' '}
+                      {s.goods?.quantity || '-'})
+                    </td>
+
+                    <td>
+                      <span className={`badge badge-${s.status}`}>
+                        {statusLabels[s.status] || s.status}
+                      </span>
+                    </td>
+
                     <td>
                       {nextStatus ? (
                         <button
                           className="btn btn-primary btn-sm"
-                          onClick={() => handleStatusUpdate(s.numericId ?? s.id, nextStatus)}
+                          onClick={() =>
+                            handleStatusUpdate(
+                              s.numericId ?? s.id,
+                              nextStatus
+                            )
+                          }
                         >
                           Mark {statusLabels[nextStatus]}
                         </button>
                       ) : (
-                        <span style={{ color: 'var(--color-success)', fontWeight: 600, fontSize: '13px' }}>✓ Complete</span>
+                        <span
+                          style={{
+                            color: 'var(--color-success)',
+                            fontWeight: 600,
+                            fontSize: '13px',
+                          }}
+                        >
+                          ✓ Complete
+                        </span>
                       )}
                     </td>
                   </tr>

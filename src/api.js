@@ -25,46 +25,63 @@ export const statusToBackend = {
 
 export function mapShipment(api) {
   if (!api) return null;
+
   return {
     id: api.shipment_id || String(api.id),
     numericId: api.id,
     manufacturerId: api.manufacturer_id,
+
     pickup: {
       address: api.pickup_address,
       city: api.pickup_city,
-      contactPerson: api.receiver_name || '',
+      contactPerson: api.pickup_contact || '', // ✅ FIXED
     },
+
     delivery: {
       receiverName: api.receiver_name,
       address: api.delivery_address,
       city: api.destination_city,
       phone: api.phone,
     },
+
     goods: {
       description: api.goods_description || '',
       quantity: api.quantity || 1,
       weight: api.weight ? String(api.weight) : null,
     },
-    status: statusToSnake[api.status] || api.status?.toLowerCase() || 'pending',
+
+    // ✅ SAFE status mapping
+    status:
+      statusToSnake[api.status] ||
+      api.status?.toLowerCase().replace(/\s+/g, '_') ||
+      'pending',
+
     assignedTransporter: api.assigned_transporter ?? null,
     currentTransporter: api.current_transporter ?? null,
+
     createdAt: api.created_at,
+
     timeline: (api.timeline || api.events || []).map((e) => ({
       event: e.status || e.event,
       time: e.timestamp || e.time,
-      actor: e.transporter_name || 'System',
+      actor:
+        e.transporter_name ||
+        e.actor ||
+        e.updated_by ||
+        'System', // ✅ improved
     })),
   };
 }
 
 export function mapTransporter(api) {
   if (!api) return null;
+
   return {
     id: api.id,
     name: api.transporter_name || api.name,
     city: api.operating_city || api.city,
     contact: api.contact,
-    routes: api.route ? [api.route] : [],
+    routes: api.route ? [api.route] : api.routes || [],
     status: api.status || 'active',
   };
 }

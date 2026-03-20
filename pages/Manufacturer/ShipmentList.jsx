@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { API_BASE } from '../../src/config';
-import { mapShipment } from '../../src/api';
+import { API_BASE } from '../../config';
+import { mapShipment } from '../../api';
 
 const statusLabels = {
   pending: 'Pending',
@@ -16,38 +16,72 @@ const statusLabels = {
 
 export default function ShipmentList() {
   const { user, getAuthHeaders } = useAuth();
+
   const [shipments, setShipments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   useEffect(() => {
     let cancelled = false;
+
     async function load() {
       try {
         const res = await fetch(`${API_BASE}/shipments`, {
           headers: getAuthHeaders(),
         });
+
         const data = await res.json();
-        if (!res.ok) throw new Error(data.message || 'Failed to load shipments');
-        if (!cancelled) setShipments((Array.isArray(data) ? data : data.shipments || []).map(mapShipment));
+
+        if (!res.ok) {
+          throw new Error(data.message || 'Failed to load shipments');
+        }
+
+        const list = Array.isArray(data) ? data : data.shipments || [];
+
+        if (!cancelled) {
+          setShipments(list.map(mapShipment));
+        }
+
       } catch (err) {
-        if (!cancelled) setError(err.message || 'Failed to load shipments');
+        if (!cancelled) {
+          setError(err.message || 'Failed to load shipments');
+        }
       } finally {
-        if (!cancelled) setLoading(false);
+        if (!cancelled) {
+          setLoading(false);
+        }
       }
     }
-    if (user) load();
-    return () => { cancelled = true; };
-  }, [user, getAuthHeaders]);
 
-  if (loading) return <div className="empty-state"><p>Loading shipments...</p></div>;
+    if (user) {
+      load();
+    }
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user]); // ✅ removed getAuthHeaders (important fix)
+
+  if (loading) {
+    return (
+      <div className="empty-state">
+        <p>Loading shipments...</p>
+      </div>
+    );
+  }
 
   return (
     <div>
       <div className="page-header">
         <h2>My Shipments</h2>
-        {error && <p style={{ color: 'var(--color-error, #c00)' }}>{error}</p>}
-      <Link to="/manufacturer/create-shipment" className="btn btn-primary">
+
+        {error && (
+          <p style={{ color: 'var(--color-error, #c00)' }}>
+            {error}
+          </p>
+        )}
+
+        <Link to="/manufacturer/create-shipment" className="btn btn-primary">
           + Create Shipment
         </Link>
       </div>
@@ -66,24 +100,39 @@ export default function ShipmentList() {
               <th>Action</th>
             </tr>
           </thead>
+
           <tbody>
-            {shipments.map(s => (
+            {shipments.map((s) => (
               <tr key={s.id}>
                 <td><strong>{s.id}</strong></td>
-                <td>{s.pickup.city}</td>
-                <td>{s.delivery.city}</td>
-                <td>{s.goods.description}</td>
-                <td>{s.goods.quantity}</td>
-                <td><span className={`badge badge-${s.status}`}>{statusLabels[s.status]}</span></td>
-                <td>{new Date(s.createdAt).toLocaleDateString()}</td>
+                <td>{s.pickup?.city || '-'}</td>
+                <td>{s.delivery?.city || '-'}</td>
+                <td>{s.goods?.description || '-'}</td>
+                <td>{s.goods?.quantity || '-'}</td>
                 <td>
-                  <Link to={`/manufacturer/shipments/${s.numericId ?? s.id}`} className="btn btn-secondary btn-sm">View</Link>
+                  <span className={`badge badge-${s.status}`}>
+                    {statusLabels[s.status] || s.status}
+                  </span>
+                </td>
+                <td>
+                  {s.createdAt
+                    ? new Date(s.createdAt).toLocaleDateString()
+                    : '-'}
+                </td>
+                <td>
+                  <Link
+                    to={`/manufacturer/shipments/${s.numericId ?? s.id}`}
+                    className="btn btn-secondary btn-sm"
+                  >
+                    View
+                  </Link>
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
-        {shipments.length === 0 && (
+
+        {shipments.length === 0 && !error && (
           <div className="empty-state">
             <div className="emoji">📋</div>
             <p>No shipments found.</p>

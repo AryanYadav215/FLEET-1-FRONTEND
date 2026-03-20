@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 
@@ -15,16 +15,25 @@ export default function Login() {
   const [role, setRole] = useState('manufacturer');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const { login } = useAuth();
+
+  const { login, user } = useAuth();
   const navigate = useNavigate();
+
+  // Auto redirect if already logged in
+  useEffect(() => {
+    if (user) {
+      navigate(roleRedirects[user.role] || '/login');
+    }
+  }, [user, navigate]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     setLoading(true);
+
     try {
-      await login(email, password, role);
-      navigate(roleRedirects[role]);
+      const loggedInUser = await login(email, password, role);
+      navigate(roleRedirects[loggedInUser.role] || '/login');
     } catch (err) {
       setError(err.message || 'Login failed');
     } finally {
@@ -37,6 +46,7 @@ export default function Login() {
       <div className="auth-card">
         <h1>Welcome Back</h1>
         <p>Sign in to Logistics Aggregator ERP</p>
+
         <form onSubmit={handleSubmit}>
           <div className="form-group">
             <label>Email</label>
@@ -48,6 +58,7 @@ export default function Login() {
               required
             />
           </div>
+
           <div className="form-group">
             <label>Password</label>
             <input
@@ -58,7 +69,13 @@ export default function Login() {
               required
             />
           </div>
-          {error && <p style={{ color: 'var(--color-error, #c00)', fontSize: '14px', marginBottom: '8px' }}>{error}</p>}
+
+          {error && (
+            <p style={{ color: 'var(--color-error, #c00)', fontSize: '14px', marginBottom: '8px' }}>
+              {error}
+            </p>
+          )}
+
           <div className="form-group">
             <label>Login As</label>
             <select value={role} onChange={e => setRole(e.target.value)}>
@@ -68,12 +85,22 @@ export default function Login() {
               <option value="admin">Admin</option>
             </select>
           </div>
-          <button type="submit" className="btn btn-primary btn-block" style={{ marginTop: '8px' }} disabled={loading}>
+
+          <button
+            type="submit"
+            className="btn btn-primary btn-block"
+            style={{ marginTop: '8px' }}
+            disabled={loading || !email || !password}
+          >
             {loading ? 'Signing In...' : 'Sign In'}
           </button>
         </form>
+
         <p style={{ textAlign: 'center', marginTop: '16px', marginBottom: 0 }}>
-          Don't have an account? <Link to="/signup" style={{ color: 'var(--color-primary)', fontWeight: 500 }}>Sign Up</Link>
+          Don't have an account?{' '}
+          <Link to="/signup" style={{ color: 'var(--color-primary)', fontWeight: 500 }}>
+            Sign Up
+          </Link>
         </p>
       </div>
     </div>
