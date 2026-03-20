@@ -3,8 +3,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 
 // ✅ FIXED IMPORTS (Vite-safe)
-import { API_BASE } from '/src/config';
-import { mapShipment, mapTransporter } from '/src/api';
+import { API_BASE } from '../../config';
+import { mapShipment, mapTransporter, statusToBackend } from '../../api';
 
 const statusLabels = {
   pending: 'Pending',

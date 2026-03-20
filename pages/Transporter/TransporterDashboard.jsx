@@ -2,9 +2,8 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 
 // ✅ FIXED IMPORTS (VERY IMPORTANT)
-import { API_BASE } from '/src/config';
-import { mapShipment, mapTransporter, statusToBackend } from '/src/api';
-
+import { API_BASE } from '../../config';
+import { mapShipment, mapTransporter, statusToBackend } from '../../api';
 const statusLabels = {
   pending: 'Pending',
   assigned: 'Assigned',

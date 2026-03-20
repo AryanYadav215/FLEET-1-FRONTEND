@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 
 // ✅ FIXED import
-import { API_BASE } from '/src/config';
+import { API_BASE } from '../../config';
 
 export default function CreateShipment() {
   const { user, getAuthHeaders } = useAuth();

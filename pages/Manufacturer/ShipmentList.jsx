@@ -3,8 +3,8 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 
 // ✅ Vite-safe imports
-import { API_BASE } from '/src/config';
-import { mapShipment } from '/src/api';
+import { API_BASE } from '../../config';
+import { mapShipment } from '../../api';
 
 const statusLabels = {
   pending: 'Pending',
