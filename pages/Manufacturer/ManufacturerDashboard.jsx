@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { API_BASE } from '../../config';
-import { mapShipment } from '../../api';
+
+// ✅ FIXED (Vite-safe absolute imports)
+import { API_BASE } from '/src/config';
+import { mapShipment } from '/src/api';
 
 const statusLabels = {
   pending: 'Pending',
@@ -62,7 +64,7 @@ export default function ManufacturerDashboard() {
     return () => {
       cancelled = true;
     };
-  }, [user]); // ✅ removed getAuthHeaders
+  }, [user]);
 
   const stats = {
     total: shipments.length,

@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import { API_BASE } from '../../config';
-import { mapShipment, mapTransporter, statusToBackend } from '../../api';
+
+// ✅ FIXED IMPORTS (VERY IMPORTANT)
+import { API_BASE } from '/src/config';
+import { mapShipment, mapTransporter, statusToBackend } from '/src/api';
 
 const statusLabels = {
   pending: 'Pending',
@@ -82,7 +84,7 @@ export default function OperationsDashboard() {
     return () => {
       cancelled = true;
     };
-  }, [refresh]); // ✅ removed getAuthHeaders
+  }, [refresh]);
 
   const stats = {
     total: shipments.length,
@@ -95,10 +97,6 @@ export default function OperationsDashboard() {
   };
 
   const pendingShipments = shipments.filter((s) => s.status === 'pending');
-  const activeShipments = shipments.filter(
-    (s) => !['pending', 'delivered'].includes(s.status)
-  );
-  const allShipments = shipments;
 
   const handleAssign = async (shipmentId) => {
     if (!selectedTransporter) {
@@ -131,40 +129,6 @@ export default function OperationsDashboard() {
     }
   };
 
-  const handleHandover = async (shipmentId) => {
-    if (!selectedTransporter || !handoverCity) {
-      alert('Select transporter and city');
-      return;
-    }
-
-    try {
-      const res = await fetch(`${API_BASE}/update-status`, {
-        method: 'POST',
-        headers: getAuthHeaders(),
-        body: JSON.stringify({
-          shipment_id: shipmentId,
-          status: statusToBackend.handed_over || 'Handed Over',
-          transporter_id: parseInt(selectedTransporter, 10),
-          location: handoverCity,
-        }),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.message || 'Failed to handover');
-      }
-
-      setShowHandover(null);
-      setSelectedTransporter('');
-      setHandoverCity('');
-      setRefresh((r) => r + 1);
-
-    } catch (err) {
-      alert(err.message || 'Failed to handover');
-    }
-  };
-
   if (loading) {
     return (
       <div className="empty-state">
@@ -175,11 +139,7 @@ export default function OperationsDashboard() {
 
   return (
     <div>
-      {error && (
-        <p style={{ color: 'var(--color-error, #c00)' }}>
-          {error}
-        </p>
-      )}
+      {error && <p style={{ color: 'red' }}>{error}</p>}
 
       <div className="page-header">
         <h2>Operations Dashboard</h2>
@@ -187,85 +147,56 @@ export default function OperationsDashboard() {
 
       <div className="stat-cards">
         <div className="stat-card">
-          <div className="stat-icon">📦</div>
-          <div className="stat-label">Total Shipments</div>
+          <div className="stat-label">Total</div>
           <div className="stat-value">{stats.total}</div>
         </div>
-
         <div className="stat-card">
-          <div className="stat-icon">⏳</div>
-          <div className="stat-label">Pending Assignment</div>
+          <div className="stat-label">Pending</div>
           <div className="stat-value">{stats.pending}</div>
         </div>
-
         <div className="stat-card">
-          <div className="stat-icon">🚚</div>
-          <div className="stat-label">In Progress</div>
-          <div className="stat-value">
-            {stats.assigned + stats.inTransit}
-          </div>
-        </div>
-
-        <div className="stat-card">
-          <div className="stat-icon">✅</div>
           <div className="stat-label">Delivered</div>
           <div className="stat-value">{stats.delivered}</div>
         </div>
       </div>
 
-      <div className="tabs">
-        <button className={`tab ${activeTab === 'new' ? 'active' : ''}`} onClick={() => setActiveTab('new')}>
-          New Requests ({pendingShipments.length})
-        </button>
-        <button className={`tab ${activeTab === 'active' ? 'active' : ''}`} onClick={() => setActiveTab('active')}>
-          Active Shipments ({activeShipments.length})
-        </button>
-        <button className={`tab ${activeTab === 'all' ? 'active' : ''}`} onClick={() => setActiveTab('all')}>
-          All Shipments ({allShipments.length})
-        </button>
+      <div className="table-container">
+        <h3>Pending Shipments</h3>
+
+        {pendingShipments.length > 0 ? (
+          <table>
+            <tbody>
+              {pendingShipments.map((s) => (
+                <tr key={s.id}>
+                  <td>{s.id}</td>
+                  <td>{s.pickup?.city}</td>
+                  <td>{s.delivery?.city}</td>
+
+                  <td>
+                    <select
+                      value={selectedTransporter}
+                      onChange={(e) => setSelectedTransporter(e.target.value)}
+                    >
+                      <option value="">Select</option>
+                      {transporters.map((t) => (
+                        <option key={t.id} value={t.id}>
+                          {t.name}
+                        </option>
+                      ))}
+                    </select>
+
+                    <button onClick={() => handleAssign(s.numericId ?? s.id)}>
+                      Assign
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        ) : (
+          <p>No pending shipments</p>
+        )}
       </div>
-
-      {/* NEW REQUESTS */}
-      {activeTab === 'new' && (
-        <div className="table-container">
-          <h3>Shipments Pending Assignment</h3>
-
-          {pendingShipments.length > 0 ? (
-            <table>
-              <tbody>
-                {pendingShipments.map((s) => (
-                  <tr key={s.id}>
-                    <td>{s.id}</td>
-                    <td>{s.pickup?.city}</td>
-                    <td>{s.delivery?.city}</td>
-
-                    <td>
-                      {showAssign === s.id ? (
-                        <>
-                          <select value={selectedTransporter} onChange={(e) => setSelectedTransporter(e.target.value)}>
-                            <option value="">Select</option>
-                            {transporters.map((t) => (
-                              <option key={t.id} value={t.id}>
-                                {t.name}
-                              </option>
-                            ))}
-                          </select>
-
-                          <button onClick={() => handleAssign(s.numericId ?? s.id)}>Assign</button>
-                        </>
-                      ) : (
-                        <button onClick={() => setShowAssign(s.id)}>Assign</button>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          ) : (
-            <p>All assigned</p>
-          )}
-        </div>
-      )}
     </div>
   );
 }

@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import { API_BASE } from '../../config';
-import { mapShipment, mapTransporter, statusToBackend } from '../../api';
+
+// ✅ FIXED IMPORTS (VERY IMPORTANT)
+import { API_BASE } from '/src/config';
+import { mapShipment, mapTransporter, statusToBackend } from '/src/api';
 
 const statusLabels = {
   pending: 'Pending',
@@ -110,7 +112,7 @@ export default function TransporterDashboard() {
     return () => {
       cancelled = true;
     };
-  }, [user, refresh]); // ✅ removed getAuthHeaders
+  }, [user, refresh]);
 
   const transporter =
     transporters.find(
@@ -137,7 +139,6 @@ export default function TransporterDashboard() {
         throw new Error(data.message || 'Failed to update status');
       }
 
-      // 🔥 refresh UI
       setRefresh((r) => r + 1);
 
     } catch (err) {
@@ -164,12 +165,7 @@ export default function TransporterDashboard() {
       <div className="page-header">
         <h2>Transporter Dashboard</h2>
 
-        <span
-          style={{
-            fontSize: '14px',
-            color: 'var(--color-text-secondary)',
-          }}
-        >
+        <span style={{ fontSize: '14px', color: 'var(--color-text-secondary)' }}>
           {transporter
             ? `${transporter.name} — ${transporter.city}`
             : 'Loading...'}
@@ -187,11 +183,9 @@ export default function TransporterDashboard() {
           <div className="stat-icon">🚚</div>
           <div className="stat-label">In Transit</div>
           <div className="stat-value">
-            {
-              shipments.filter((s) =>
-                ['picked_up', 'in_transit'].includes(s.status)
-              ).length
-            }
+            {shipments.filter((s) =>
+              ['picked_up', 'in_transit'].includes(s.status)
+            ).length}
           </div>
         </div>
 
@@ -199,10 +193,7 @@ export default function TransporterDashboard() {
           <div className="stat-icon">✅</div>
           <div className="stat-label">Delivered</div>
           <div className="stat-value">
-            {
-              shipments.filter((s) => s.status === 'delivered')
-                .length
-            }
+            {shipments.filter((s) => s.status === 'delivered').length}
           </div>
         </div>
       </div>
@@ -214,48 +205,19 @@ export default function TransporterDashboard() {
 
         {shipments.length > 0 ? (
           <table>
-            <thead>
-              <tr>
-                <th>Shipment ID</th>
-                <th>Pickup Address</th>
-                <th>Delivery Location</th>
-                <th>Goods</th>
-                <th>Status</th>
-                <th>Action</th>
-              </tr>
-            </thead>
-
             <tbody>
               {shipments.map((s) => {
                 const nextStatus = getNextStatus(s.status);
 
                 return (
                   <tr key={s.id}>
-                    <td><strong>{s.id}</strong></td>
-
-                    <td>
-                      {s.pickup?.address || '-'}, {s.pickup?.city || '-'}
-                    </td>
-
-                    <td>
-                      {s.delivery?.address || '-'}, {s.delivery?.city || '-'}
-                    </td>
-
-                    <td>
-                      {s.goods?.description || '-'} (Qty:{' '}
-                      {s.goods?.quantity || '-'})
-                    </td>
-
-                    <td>
-                      <span className={`badge badge-${s.status}`}>
-                        {statusLabels[s.status] || s.status}
-                      </span>
-                    </td>
+                    <td>{s.id}</td>
+                    <td>{s.pickup?.city}</td>
+                    <td>{s.delivery?.city}</td>
 
                     <td>
                       {nextStatus ? (
                         <button
-                          className="btn btn-primary btn-sm"
                           onClick={() =>
                             handleStatusUpdate(
                               s.numericId ?? s.id,
@@ -263,18 +225,10 @@ export default function TransporterDashboard() {
                             )
                           }
                         >
-                          Mark {statusLabels[nextStatus]}
+                          {statusLabels[nextStatus]}
                         </button>
                       ) : (
-                        <span
-                          style={{
-                            color: 'var(--color-success)',
-                            fontWeight: 600,
-                            fontSize: '13px',
-                          }}
-                        >
-                          ✓ Complete
-                        </span>
+                        'Done'
                       )}
                     </td>
                   </tr>
@@ -283,10 +237,7 @@ export default function TransporterDashboard() {
             </tbody>
           </table>
         ) : (
-          <div className="empty-state">
-            <div className="emoji">🚚</div>
-            <p>No shipments assigned to you yet.</p>
-          </div>
+          <p>No shipments</p>
         )}
       </div>
     </div>

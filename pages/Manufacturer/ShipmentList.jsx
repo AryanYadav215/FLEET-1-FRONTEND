@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { API_BASE } from '../../config';
-import { mapShipment } from '../../api';
+
+// ✅ Vite-safe imports
+import { API_BASE } from '/src/config';
+import { mapShipment } from '/src/api';
 
 const statusLabels = {
   pending: 'Pending',
@@ -60,7 +62,7 @@ export default function ShipmentList() {
     return () => {
       cancelled = true;
     };
-  }, [user]); // ✅ removed getAuthHeaders (important fix)
+  }, [user]);
 
   if (loading) {
     return (
@@ -75,16 +77,14 @@ export default function ShipmentList() {
       <div className="page-header">
         <h2>My Shipments</h2>
 
-        {error && (
-          <p style={{ color: 'var(--color-error, #c00)' }}>
-            {error}
-          </p>
-        )}
-
         <Link to="/manufacturer/create-shipment" className="btn btn-primary">
           + Create Shipment
         </Link>
       </div>
+
+      {error && (
+        <p style={{ color: 'var(--color-error, #c00)' }}>{error}</p>
+      )}
 
       <div className="table-container">
         <table>
@@ -97,7 +97,6 @@ export default function ShipmentList() {
               <th>Quantity</th>
               <th>Status</th>
               <th>Created</th>
-              <th>Action</th>
             </tr>
           </thead>
 
@@ -119,22 +118,13 @@ export default function ShipmentList() {
                     ? new Date(s.createdAt).toLocaleDateString()
                     : '-'}
                 </td>
-                <td>
-                  <Link
-                    to={`/manufacturer/shipments/${s.numericId ?? s.id}`}
-                    className="btn btn-secondary btn-sm"
-                  >
-                    View
-                  </Link>
-                </td>
               </tr>
             ))}
           </tbody>
         </table>
 
-        {shipments.length === 0 && !error && (
+        {shipments.length === 0 && (
           <div className="empty-state">
-            <div className="emoji">📋</div>
             <p>No shipments found.</p>
           </div>
         )}

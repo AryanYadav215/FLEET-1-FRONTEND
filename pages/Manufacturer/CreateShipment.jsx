@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { API_BASE } from '../../config';
+
+// ✅ FIXED import
+import { API_BASE } from '/src/config';
 
 export default function CreateShipment() {
   const { user, getAuthHeaders } = useAuth();
@@ -66,7 +68,6 @@ export default function CreateShipment() {
         throw new Error(data.message || 'Failed to create shipment');
       }
 
-      // ✅ success
       navigate('/manufacturer/shipments');
 
     } catch (err) {
@@ -98,7 +99,6 @@ export default function CreateShipment() {
               name="pickupAddress"
               value={form.pickupAddress}
               onChange={handleChange}
-              placeholder="Enter full pickup address"
               required
             />
           </div>
@@ -110,7 +110,6 @@ export default function CreateShipment() {
                 name="pickupCity"
                 value={form.pickupCity}
                 onChange={handleChange}
-                placeholder="Pickup city"
                 required
               />
             </div>
@@ -121,7 +120,6 @@ export default function CreateShipment() {
                 name="pickupContact"
                 value={form.pickupContact}
                 onChange={handleChange}
-                placeholder="Contact name"
                 required
               />
             </div>
@@ -138,7 +136,6 @@ export default function CreateShipment() {
                 name="receiverName"
                 value={form.receiverName}
                 onChange={handleChange}
-                placeholder="Receiver / company name"
                 required
               />
             </div>
@@ -149,30 +146,27 @@ export default function CreateShipment() {
                 name="destinationCity"
                 value={form.destinationCity}
                 onChange={handleChange}
-                placeholder="Delivery city"
                 required
               />
             </div>
           </div>
 
           <div className="form-group">
-            <label>Receiver Full Address</label>
+            <label>Receiver Address</label>
             <input
               name="receiverAddress"
               value={form.receiverAddress}
               onChange={handleChange}
-              placeholder="Enter full delivery address"
               required
             />
           </div>
 
           <div className="form-group">
-            <label>Phone Number</label>
+            <label>Phone</label>
             <input
               name="receiverPhone"
               value={form.receiverPhone}
               onChange={handleChange}
-              placeholder="Receiver phone number"
               required
             />
           </div>
@@ -187,7 +181,6 @@ export default function CreateShipment() {
               name="goodsDescription"
               value={form.goodsDescription}
               onChange={handleChange}
-              placeholder="Describe the goods"
               required
             />
           </div>
@@ -200,29 +193,23 @@ export default function CreateShipment() {
                 type="number"
                 value={form.quantity}
                 onChange={handleChange}
-                placeholder="Number of items"
                 required
               />
             </div>
 
             <div className="form-group">
-              <label>Weight (optional)</label>
+              <label>Weight</label>
               <input
                 name="weight"
                 value={form.weight}
                 onChange={handleChange}
-                placeholder="e.g. 450 kg"
               />
             </div>
           </div>
         </div>
 
         <div className="action-bar">
-          <button
-            type="submit"
-            className="btn btn-primary"
-            disabled={loading}
-          >
+          <button type="submit" className="btn btn-primary" disabled={loading}>
             {loading ? 'Creating...' : 'Create Shipment'}
           </button>
 
